@@ -1,0 +1,13 @@
+.DS_Store
+*.log
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/
+
+# Local runtime artifacts
+backend.log
+
+# OS/editor files
+.idea/
+.vscode/

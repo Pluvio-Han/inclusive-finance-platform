@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>普惠金融风险动态评估平台</title>
+    <!-- Fonts (Local) -->
+    <link rel="stylesheet" href="css/fonts.css">
+    <!-- FontAwesome (Local) -->
+    <link rel="stylesheet" href="css/all.min.css">
+    <!-- ECharts (Local) -->
+    <script src="js/lib/echarts.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Cinematic Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader-content">
+            <div class="loader-spin"><i class="fa-solid fa-circle-notch fa-spin"></i></div>
+            <h2 class="loader-title">普惠金融风险动态评估大脑</h2>
+            <div class="loader-text" id="loader-text">连接多源异构底层数据库...</div>
+            <div class="loader-bar-bg"><div class="loader-bar" id="loader-bar"></div></div>
+        </div>
+    </div>
+
+    <!-- AI Processing Modal (Hidden by default) -->
+    <div id="ai-modal" class="ai-overlay">
+        <div class="ai-box glass-panel">
+            <div class="scanning-light"></div>
+            <i class="fa-solid fa-microchip fa-bounce ai-icon"></i>
+            <h3>长链条政策推演沙盘计算中</h3>
+            <p id="ai-status">正在调用双重差分 (DID) 与 CGE 预测模型...</p>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-main" style="opacity: 0;">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="logo-container">
+                <div class="logo-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                <h1 class="logo-text">普惠金融<br><span>风控大脑</span></h1>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i class="fa-solid fa-house"></i> 综合驾驶舱
+                </a>
+                <a href="#" class="nav-item" data-view="trend">
+                    <i class="fa-solid fa-chart-line"></i> 行业演化视图
+                </a>
+                <a href="#" class="nav-item" data-view="map">
+                    <i class="fa-solid fa-map-location-dot"></i> 区域下钻规划
+                </a>
+                <a href="#" class="nav-item" data-view="policy">
+                    <i class="fa-solid fa-sliders"></i> 政策模拟平台
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div class="status-indicator">
+                    <span class="pulse-dot"></span> 系统实时监控中
+                </div>
+                <div class="sidebar-time-display" id="current-time">2026-04-17 10:00:00</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header glass-panel">
+                <div class="header-left">
+                    <h2 id="view-title">综合风险评估驾驶舱</h2>
+                    <div class="warning-ticker">
+                        <i class="fa-solid fa-triangle-exclamation warning-icon"></i>
+                        <span id="ticker-text">模拟预警: 广东省某制造业协会出现产业链违约异动信号，风险指数升级至 [黄色警告]...</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="btn-secondary evidence-trigger" id="btn-evidence">
+                        <span class="evidence-trigger-icon" aria-hidden="true"></span>
+                        <span class="evidence-trigger-copy">
+                            <strong>决策证据链</strong>
+                        </span>
+                    </button>
+                    <div class="user-profile">
+                        <div class="avatar university-badge" aria-label="华南师范大学校徽"></div>
+                        <div class="user-meta">
+                            <strong>华南师范大学</strong>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div class="dashboard-grid view-section active" id="view-dashboard">
+                
+                <!-- KPIs (Sector A & Radar) -->
+                <div class="top-row-flex stagger-up" style="animation-delay: 0.2s;">
+                    <!-- 6 KPIs -->
+                    <div class="kpi-grid-dashboard">
+                        <div class="kpi-card glass-panel" id="card-economy">
+                            <div class="kpi-title">区域经济景气度</div>
+                            <div class="kpi-value text-glow-green" id="kpi-economy">--<span class="kpi-trend"></span></div>
+                            <div class="kpi-sub">基于宏观与多源异构数据合成</div>
+                        </div>
+                        <div class="kpi-card glass-panel" id="card-health">
+                            <div class="kpi-title">行业发展健康指数</div>
+                            <div class="kpi-value text-glow-blue" id="kpi-health">--<span class="kpi-trend"></span></div>
+                            <div class="kpi-sub">当前覆盖制造/服务等核心产业</div>
+                        </div>
+                        <div class="kpi-card glass-panel" id="card-env">
+                            <div class="kpi-title">普惠金融环境指数</div>
+                            <div class="kpi-value text-glow-blue" id="kpi-env">--<span class="kpi-trend"></span></div>
+                            <div class="kpi-sub">信贷基建与政策支持度考量</div>
+                        </div>
+                        <div class="kpi-card glass-panel" id="card-micro">
+                            <div class="kpi-title">小微企业经营健康</div>
+                            <div class="kpi-value text-glow-yellow" id="kpi-micro">--<span class="kpi-trend"></span></div>
+                            <div class="kpi-sub">基于工商与税务脱敏特征</div>
+                        </div>
+                        <div class="kpi-card glass-panel" id="card-npl">
+                            <div class="kpi-title">普惠小微贷款不良率</div>
+                            <div class="kpi-value text-glow-red" id="kpi-npl">--%<span class="kpi-trend"></span></div>
+                            <div class="kpi-sub">银保监公报 · 监测点位阈值承压</div>
+                        </div>
+                        <div class="kpi-card glass-panel" id="card-policy">
+                            <div class="kpi-title">政策实施有效性</div>
+                            <div class="kpi-value text-glow-green" id="kpi-policy">--<span class="kpi-trend"></span></div>
+                            <div class="kpi-sub">双重差分 (DID) 后验测算结果</div>
+                        </div>
+                    </div>
+                    <!-- Radar Chart (Audit suggested) -->
+                    <div class="radar-box glass-panel">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-compass"></i> 多维风险评估雷达图</h3>
+                        </div>
+                        <div id="radarChart" style="height: 180px; width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Main Charts Area -->
+                <div class="charts-container stagger-up" style="animation-delay: 0.4s;">
+                    <!-- Central Map -->
+                    <div class="chart-box main-map glass-panel">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-earth-asia"></i> 全国普惠金融环境指数热力图</h3>
+                            <div class="chart-actions">
+                                <span class="data-source-badge">模拟数据 · 框架已对接央行数据结构</span>
+                            </div>
+                        </div>
+                        <div class="chart-content" id="mapChart"></div>
+                    </div>
+
+                    <!-- Right Column: Sim & Relations -->
+                    <div class="right-column">
+                        <!-- Policy Simulator Widget -->
+                        <div class="chart-box policy-sim glass-panel">
+                            <div class="chart-header">
+                                <h3><i class="fa-solid fa-sliders"></i> 动态政策模拟沙盘</h3>
+                            </div>
+                            <div class="sim-controls">
+                                <div class="control-group">
+                                    <label>政府担保资金拨备率 <span id="val-guarantee" class="val-badge">10%</span></label>
+                                    <input type="range" id="sim-guarantee" min="5" max="30" value="10" step="1" class="neon-slider">
+                                </div>
+                                <div class="control-group">
+                                    <label>定向降准/利率优惠幅度 <span id="val-rate" class="val-badge">-0.50%</span></label>
+                                    <input type="range" id="sim-rate" min="-2" max="0" value="-0.5" step="0.1" class="neon-slider">
+                                </div>
+                                <div class="control-group">
+                                    <label>产业转型补贴发放覆盖 <span id="val-subsidy" class="val-badge">低</span></label>
+                                    <input type="range" id="sim-subsidy" min="1" max="3" value="1" step="1" class="neon-slider">
+                                </div>
+                                <button class="btn-primary" id="btn-simulate">
+                                    <i class="fa-solid fa-microchip"></i> 运行 AI 模拟推演
+                                </button>
+                            </div>
+                            <div class="sim-results" id="sim-results">
+                                <!-- Results injected via JS -->
+                                <div class="result-placeholder">等待变量调整与推演...</div>
+                            </div>
+                        </div>
+
+                        <!-- Relation Graph / Industry -->
+                        <div class="chart-box relation-graph glass-panel">
+                            <div class="chart-header">
+                                <h3><i class="fa-solid fa-network-wired"></i> 产业链风险传导图谱</h3>
+                            </div>
+                            <div class="chart-content" id="relationChart"></div>
+                            <div class="industry-link-panel" id="industry-link-panel">
+                                <div class="industry-link-kicker">产业定向建议</div>
+                                <div class="industry-link-title">点击图谱节点，联动生成定向扶持策略</div>
+                                <div class="industry-link-copy">系统将根据节点风险等级、传导路径和政策焦点，自动校准担保、利率优惠与补贴覆盖建议。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Row: Trend & Radar -->
+                <div class="bottom-row stagger-up" style="animation-delay: 0.6s;">
+                    <div class="bottom-trend glass-panel">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-chart-area"></i> 普惠小微贷款不良率追踪与 LSTM 预测</h3>
+                            <span class="data-source-badge">模型置信度 95.8% · LSTM 长短期记忆网络</span>
+                        </div>
+                        <div class="chart-content" id="trendChart"></div>
+                    </div>
+                    <div class="radar-box glass-panel">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-file-circle-check"></i> 当前阶段系统结论</h3>
+                        </div>
+                        <div class="evidence-mini">
+                            <div class="mini-item">
+                                <span class="mini-label">风险监测</span>
+                                <strong>省级热力 + 脉冲预警已闭环</strong>
+                            </div>
+                            <div class="mini-item">
+                                <span class="mini-label">政策评估</span>
+                                <strong>PSM-DID 口径统一为结构化输出</strong>
+                            </div>
+                            <div class="mini-item">
+                                <span class="mini-label">审计关注</span>
+                                <strong>当前已进入路演收口阶段，重点提升首页联动与报告完整性</strong>
+                            </div>
+                            <div class="mini-jump-grid">
+                                <button class="mini-jump-card" data-jump-view="trend" data-industry="manufacturing">
+                                    <span class="mini-jump-kicker">行业入口</span>
+                                    <strong>制造业风险榜首</strong>
+                                    <em>直达行业演化视图，查看账期压力与节点热度排序</em>
+                                </button>
+                                <button class="mini-jump-card" data-jump-view="map" data-province="广东">
+                                    <span class="mini-jump-kicker">区域入口</span>
+                                    <strong>广东预警重点</strong>
+                                    <em>直达区域下钻规划，联动省份画像与区域策略建议</em>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="view-section" id="view-trend">
+                <div class="analysis-grid trend-analysis-grid">
+                    <div class="glass-panel analysis-hero">
+                        <div class="analysis-hero-head">
+                            <div class="analysis-hero-copy">
+                                <span class="data-source-badge">行业风险演化引擎</span>
+                                <h3><i class="fa-solid fa-chart-line"></i> 行业风险演化视图</h3>
+                                <p>围绕行业景气、账期压力、融资成本与补贴敏感度，展示风险如何沿时间维度与关键节点逐步传导。</p>
+                            </div>
+                            <div class="segmented-control" id="industry-switcher">
+                                <button class="segment-btn active" data-industry="manufacturing">制造业</button>
+                                <button class="segment-btn" data-industry="retail">批发零售</button>
+                                <button class="segment-btn" data-industry="service">科技服务</button>
+                            </div>
+                        </div>
+                        <div class="analysis-summary-grid">
+                            <div class="analysis-summary-card">
+                                <span>当前风险等级</span>
+                                <strong id="industry-risk-level">中高风险</strong>
+                                <em id="industry-risk-score">风险分值 71</em>
+                            </div>
+                            <div class="analysis-summary-card">
+                                <span>主压力量纲</span>
+                                <strong id="industry-driver-main">账期拉长</strong>
+                                <em id="industry-driver-desc">上游回款拖延导致流动性承压</em>
+                            </div>
+                            <div class="analysis-summary-card">
+                                <span>建议政策方向</span>
+                                <strong id="industry-policy-focus">担保增信 + 中等贴息</strong>
+                                <em id="industry-policy-desc">先稳融资，再稳订单修复节奏</em>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel chart-box analysis-chart-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-wave-square"></i> 行业风险指数 12 个月演化</h3>
+                            <span class="data-source-badge">模拟时间序列 · 风险脉冲已平滑处理</span>
+                        </div>
+                        <div id="industryEvolutionChart" class="analysis-chart"></div>
+                    </div>
+
+                    <div class="glass-panel chart-box analysis-chart-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-table-cells-large"></i> 风险驱动因子热力拆解</h3>
+                            <span class="data-source-badge">账期 / 成本 / 补贴敏感度</span>
+                        </div>
+                        <div id="industryDriverHeatmap" class="analysis-chart compact"></div>
+                    </div>
+
+                    <div class="glass-panel chart-box insight-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-sitemap"></i> 传导链路结论</h3>
+                        </div>
+                        <div class="insight-list" id="industryInsightList">
+                            <div class="insight-item">
+                                <span>核心判断</span>
+                                <strong>订单修复已启动，但上游账期压力尚未释放。</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel chart-box analysis-chart-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-bars-progress"></i> 重点节点风险热度排序</h3>
+                            <span class="data-source-badge">用于产业链联动策略切入</span>
+                        </div>
+                        <div id="industryNodeRanking" class="analysis-chart compact"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="view-section" id="view-map">
+                <div class="analysis-grid region-analysis-grid">
+                    <div class="glass-panel analysis-hero">
+                        <div class="analysis-hero-head">
+                            <div class="analysis-hero-copy">
+                                <span class="data-source-badge">区域画像规划台</span>
+                                <h3><i class="fa-solid fa-map-location-dot"></i> 区域下钻规划</h3>
+                                <p>聚焦区域信用环境、小微经营健康、产业结构和风险归因，为不同省份生成可讲、可比、可落地的策略画像。</p>
+                            </div>
+                            <div class="segmented-control" id="region-switcher">
+                                <button class="segment-btn active" data-province="广东">广东</button>
+                                <button class="segment-btn" data-province="江苏">江苏</button>
+                                <button class="segment-btn" data-province="浙江">浙江</button>
+                                <button class="segment-btn" data-province="四川">四川</button>
+                            </div>
+                        </div>
+                        <div class="analysis-summary-grid">
+                            <div class="analysis-summary-card">
+                                <span>区域信用环境</span>
+                                <strong id="region-credit-env">95</strong>
+                                <em id="region-credit-desc">普惠金融基础设施成熟</em>
+                            </div>
+                            <div class="analysis-summary-card">
+                                <span>小微经营健康</span>
+                                <strong id="region-micro-health">82</strong>
+                                <em id="region-micro-desc">订单韧性优于全国均值</em>
+                            </div>
+                            <div class="analysis-summary-card">
+                                <span>政策建议组合</span>
+                                <strong id="region-policy-pack">温和贴息 + 定向担保</strong>
+                                <em id="region-policy-pack-desc">优先覆盖制造链上游与首贷户</em>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel chart-box analysis-chart-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-earth-asia"></i> 区域信用热力与预警定位</h3>
+                            <span class="data-source-badge">点击省份可联动画像与侧栏</span>
+                        </div>
+                        <div id="regionMapChart" class="analysis-chart"></div>
+                    </div>
+
+                    <div class="glass-panel chart-box insight-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-magnifying-glass-chart"></i> 区域诊断摘要</h3>
+                        </div>
+                        <div class="insight-list" id="regionInsightList">
+                            <div class="insight-item">
+                                <span>当前结论</span>
+                                <strong>制造业核心省份信用环境优，但产业链脉冲预警仍需专项盯防。</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel chart-box analysis-chart-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-chart-pie"></i> 区域产业结构分布</h3>
+                            <span class="data-source-badge">重点行业暴露结构</span>
+                        </div>
+                        <div id="regionStructureChart" class="analysis-chart compact"></div>
+                    </div>
+
+                    <div class="glass-panel chart-box analysis-chart-box">
+                        <div class="chart-header">
+                            <h3><i class="fa-solid fa-sliders"></i> 风险因子贡献排序</h3>
+                            <span class="data-source-badge">用于区域策略归因</span>
+                        </div>
+                        <div id="regionRiskFactorChart" class="analysis-chart compact"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Province Drill-Down Sidebar (shared across views) -->
+            <div id="province-sidebar" class="province-sidebar glass-panel">
+                <div class="sidebar-close" id="close-province">×</div>
+                <div class="province-header">
+                    <h3 id="province-name">广东省</h3>
+                    <span class="data-source-badge">"AI 分析" • 区域风险画像</span>
+                </div>
+                <div class="province-stats" id="province-stats">
+                    <div class="p-stat">
+                        <div class="p-stat-label">不良贷款率</div>
+                        <div class="p-stat-value text-glow-red" id="p-npl">--</div>
+                    </div>
+                    <div class="p-stat">
+                        <div class="p-stat-label">信用环境指数</div>
+                        <div class="p-stat-value text-glow-green" id="p-credit">--</div>
+                    </div>
+                    <div class="p-stat">
+                        <div class="p-stat-label">小微企业健康</div>
+                        <div class="p-stat-value text-glow-blue" id="p-micro">--</div>
+                    </div>
+                </div>
+                <div class="chart-box" style="padding:0;">
+                    <div class="chart-header" style="padding:12px 0 8px;">
+                        <h3 style="font-size:13px;"><i class="fa-solid fa-chart-pie"></i> 主要行业风险分布</h3>
+                    </div>
+                    <div id="industryPieChart" style="height:180px; width:100%;"></div>
+                </div>
+                <div class="chart-box" style="padding:0; margin-top:12px;">
+                    <div class="chart-header" style="padding:12px 0 8px;">
+                        <h3 style="font-size:13px;"><i class="fa-solid fa-chart-bar"></i> 风险因子贡献度</h3>
+                    </div>
+                    <div id="riskBarChart" style="height:180px; width:100%;"></div>
+                </div>
+                <div class="province-warning" id="province-warning"></div>
+            </div>
+
+            <!-- Full Policy Comparison View -->
+            <div class="view-section" id="view-policy">
+                <div class="policy-compare-grid">
+                    <!-- Scenario A -->
+                    <div class="scenario-card glass-panel">
+                        <div class="scenario-header">
+                            <div class="scenario-badge badge-a">A</div>
+                            <h3>情景 A &mdash; 基准策略</h3>
+                            <span class="data-source-badge">当前政策基准</span>
+                        </div>
+                        <div class="scenario-controls">
+                            <div class="control-group">
+                                <label>担保资金拨备率 <span class="val-badge" id="a-val-g">10%</span></label>
+                                <input type="range" id="a-guarantee" min="5" max="30" value="10" class="neon-slider">
+                            </div>
+                            <div class="control-group">
+                                <label>利率优惠幅度 <span class="val-badge" id="a-val-r">-0.50%</span></label>
+                                <input type="range" id="a-rate" min="-2" max="0" value="-0.5" step="0.1" class="neon-slider">
+                            </div>
+                            <div class="control-group">
+                                <label>补贴覆盖等级 <span class="val-badge" id="a-val-s">低</span></label>
+                                <input type="range" id="a-subsidy" min="1" max="3" value="1" class="neon-slider">
+                            </div>
+                        </div>
+                        <div class="scenario-result" id="a-result">
+                            <div class="result-row"><span>预测不良率</span><strong id="a-npl" class="text-glow-red">2.14%</strong></div>
+                            <div class="result-row"><span>DID 估计量</span><strong id="a-did">0.00</strong></div>
+                            <div class="result-row"><span>受益企业数</span><strong id="a-biz">12,000</strong></div>
+                            <div class="result-row"><span>财政成本</span><strong id="a-cost">8 亿</strong></div>
+                            <div class="result-row"><span>政策 ROI</span><strong id="a-roi" class="text-glow-green">--</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Central Comparison Chart -->
+                    <div class="comparison-center">
+                        <div class="glass-panel comparison-chart-box">
+                            <div class="chart-header">
+                                <h3><i class="fa-solid fa-scale-balanced"></i> 情景 A vs B &mdash; 核心指标对比</h3>
+                                <button class="btn-primary" id="btn-compare" style="padding: 8px 16px; font-size:13px;">
+                                    <i class="fa-solid fa-bolt"></i> 运行对比推演
+                                </button>
+                            </div>
+                            <div id="compareChart" style="height: 280px;"></div>
+                        </div>
+                        <div class="glass-panel comparison-chart-box" style="margin-top:15px;">
+                            <div class="chart-header">
+                                <h3><i class="fa-solid fa-chart-line"></i> 不良率下降路径对比</h3>
+                            </div>
+                            <div id="compareTrendChart" style="height: 220px;"></div>
+                        </div>
+                        <div class="policy-recommend glass-panel" id="policy-recommend" style="display:none;">
+                            <i class="fa-solid fa-trophy" style="color:var(--accent-yellow); font-size:20px;"></i>
+                            <div id="recommend-text">推荐采用情景…</div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario B -->
+                    <div class="scenario-card glass-panel">
+                        <div class="scenario-header">
+                            <div class="scenario-badge badge-b">B</div>
+                            <h3>情景 B &mdash; 强化干预策略</h3>
+                            <span class="data-source-badge">候选优化路径</span>
+                        </div>
+                        <div class="scenario-controls">
+                            <div class="control-group">
+                                <label>担保资金拨备率 <span class="val-badge" id="b-val-g">20%</span></label>
+                                <input type="range" id="b-guarantee" min="5" max="30" value="20" class="neon-slider">
+                            </div>
+                            <div class="control-group">
+                                <label>利率优惠幅度 <span class="val-badge" id="b-val-r">-1.00%</span></label>
+                                <input type="range" id="b-rate" min="-2" max="0" value="-1.0" step="0.1" class="neon-slider">
+                            </div>
+                            <div class="control-group">
+                                <label>补贴覆盖等级 <span class="val-badge" id="b-val-s">高</span></label>
+                                <input type="range" id="b-subsidy" min="1" max="3" value="3" class="neon-slider">
+                            </div>
+                        </div>
+                        <div class="scenario-result" id="b-result">
+                            <div class="result-row"><span>预测不良率</span><strong id="b-npl" class="text-glow-red">2.14%</strong></div>
+                            <div class="result-row"><span>DID 估计量</span><strong id="b-did">0.00</strong></div>
+                            <div class="result-row"><span>受益企业数</span><strong id="b-biz">12,000</strong></div>
+                            <div class="result-row"><span>财政成本</span><strong id="b-cost">8 亿</strong></div>
+                            <div class="result-row"><span>政策 ROI</span><strong id="b-roi" class="text-glow-green">--</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Evidence Panel Modal (Slide-out) -->
+    <div id="evidence-panel" class="evidence-overlay">
+        <div class="evidence-box glass-panel">
+            <div class="evidence-header">
+                <h3><i class="fa-solid fa-file-shield"></i> 决策支持证据链报告</h3>
+                <div class="close-evidence" id="close-evidence">×</div>
+            </div>
+            <div class="evidence-content">
+                <div class="e-section">
+                    <h4><i class="fa-solid fa-microchip"></i> 算法与模型说明</h4>
+                    <p>本平台当前阶段以 <strong>PSM-DID</strong> 作为政策净效应测算主口径，以 <strong>LSTM</strong> 生成不良率趋势预测，并通过 AHP、熵权与 PCA 的指标体系完成首页综合评分展示。</p>
+                </div>
+                <div class="e-section">
+                    <h4><i class="fa-solid fa-database"></i> 数据来源可信度</h4>
+                    <ul class="e-list">
+                        <li><strong>宏观数据</strong>: 国家统计局 GDP、PMI 等统计口径结构</li>
+                        <li><strong>金融数据</strong>: 央行、银保监及地方监管报表口径映射</li>
+                        <li><strong>产业数据</strong>: 以广东制造业场景为核心的行业链路示意样本</li>
+                    </ul>
+                </div>
+                <div class="e-section">
+                    <h4><i class="fa-solid fa-check-double"></i> 逻辑验证摘要</h4>
+                    <div class="e-table-wrapper">
+                        <table class="e-table">
+                            <thead><tr><th>指标</th><th>逻辑校验状态</th><th>审计依据</th></tr></thead>
+                            <tbody>
+                                <tr><td>不良率公式</td><td><span class="e-tag pass">通过</span></td><td>参照银保监相关报表口径设计</td></tr>
+                                <tr><td>区域权重</td><td><span class="e-tag pass">通过</span></td><td>AHP 层次分析法修正</td></tr>
+                                <tr><td>ROI 计算</td><td><span class="e-tag pass">通过</span></td><td>每亿元财政投入收益企业数</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="e-section evidence-note-block">
+                    <h4><i class="fa-solid fa-file-circle-check"></i> 证据输出说明</h4>
+                    <p>导出报告将同步整合当前政策推演结果、产业链上下文、区域下钻画像与评分卡指标，用于形成结构化决策说明，不额外拼接答辩脚本化内容。</p>
+                </div>
+            </div>
+            <div class="evidence-footer">
+                <div class="evidence-footer-copy">
+                    <strong>当前证据链已与报告导出打通</strong>
+                    <span>建议在完成一次政策推演后导出，确保结果、附件与结论保持一致。</span>
+                </div>
+                <button class="btn-primary" id="btn-export-report"><i class="fa-solid fa-print"></i> 导出决策建议报告</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-print-root" class="report-print-root" aria-hidden="true"></div>
+
+    <!-- Scripts -->
+    <script src="js/mock_data.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
