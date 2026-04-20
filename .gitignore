@@ -11,3 +11,8 @@ backend.log
 # OS/editor files
 .idea/
 .vscode/
+docs/.Rhistory
+*.aux
+*.fdb_latexmk
+*.fls
+*.xdv
