@@ -4,12 +4,469 @@
 所有模拟数据集中管理在此。未来接入真实数据库/模型时，
 仅需替换本文件中的函数实现，前端与 API 层完全无感知。
 """
+import json
+from pathlib import Path
+from typing import Optional
+
+ASSET_DATA_DIR = Path(__file__).resolve().parent.parent / "assets" / "data"
+GUANGDONG_RAW_DATA_PATH = ASSET_DATA_DIR / "guangdong_official_raw_data.json"
+CITY_KEYWORDS = {
+    "广州": "广州市",
+    "深圳": "深圳市",
+    "佛山": "佛山市",
+    "东莞": "东莞市",
+    "珠海": "珠海市",
+}
+
+MAIN_INDUSTRY_OPTION_MAP = {
+    "规模以上工业": ["规模以上工业", "工业"],
+    "制造业": [
+        "制造业",
+        "先进制造业",
+        "高技术制造业",
+        "食品制造业",
+        "纺织业",
+        "通用设备制造业",
+        "汽车制造业",
+        "电气机械和器材制造业",
+        "计算机、通信和其他电子设备制造业"
+    ],
+    "批发和零售": ["批发和零售", "批发和零售业", "商品零售", "住宿和餐饮"],
+    "金融业": ["金融业", "银行业"],
+    "软件和信息技术服务业": [
+        "软件和信息技术服务业",
+        "信息传输、软件和信息技术服务业",
+        "科学研究和技术服务业",
+        "租赁和商务服务业"
+    ],
+    "外贸": ["外贸", "工业出口"],
+    "房地产业": ["房地产业"],
+    "交通运输、仓储和邮政业": ["交通运输、仓储和邮政业"]
+}
+
+
+def _load_guangdong_raw_data():
+    if not GUANGDONG_RAW_DATA_PATH.exists():
+        return {"metadata": {}, "records": []}
+    return json.loads(GUANGDONG_RAW_DATA_PATH.read_text(encoding="utf-8"))
+
+
+def _normalize_city_token(token: str) -> str:
+    token = (token or "").strip()
+    if not token:
+        return ""
+    return CITY_KEYWORDS.get(token, token)
+
+
+def _industry_aliases(industry: str):
+    industry = (industry or "").strip()
+    if not industry:
+        return []
+    return MAIN_INDUSTRY_OPTION_MAP.get(industry, [industry])
+
+
+def _record_matches_industry(record_industry: str, selected_industry: str) -> bool:
+    aliases = _industry_aliases(selected_industry)
+    if not aliases:
+        return True
+    record_industry = (record_industry or "").strip()
+    return any(alias == record_industry for alias in aliases)
+
+
+def _build_empty_search_message(province: str = "", city: str = "", industry: str = "", year: str = "all") -> str:
+    year_label = "全部年份" if year == "all" else ("2023及以前" if year == "older" else year)
+    if city and industry:
+        return f"{city} 在 {year_label} 暂无“{industry}”细分数据，建议优先切换为“规模以上工业”，或将城市改为“全部城市”。"
+    if industry:
+        return f"当前筛选条件下暂无“{industry}”数据，建议放宽年份，或切换到“规模以上工业”“制造业”等主行业。"
+    if city:
+        return f"{city} 在 {year_label} 暂无匹配记录，建议放宽年份，或改选其他城市后再检索。"
+    if province:
+        return f"{province} 在当前筛选条件下暂无匹配记录，建议调整行业或年份后重试。"
+    return "未检索到匹配记录，请调整省份、城市、行业或年份条件后重试。"
+
+
+def _filter_records(records, province: str = "", city: str = "", industry: str = "", year: str = "all"):
+    filtered = []
+    for record in records:
+        record_province = str(record.get("province", "") or "").strip()
+        record_city = str(record.get("city", "") or "").strip()
+        record_industry = str(record.get("industry", "") or "").strip()
+        period = str(record.get("period", "") or "")
+
+        if province and record_province != province:
+            continue
+        if city and record_city != city:
+            continue
+        if industry and not _record_matches_industry(record_industry, industry):
+            continue
+        if year and year != "all":
+            if year == "older":
+                if "2025" in period or "2024" in period or "2026" in period:
+                    continue
+            elif year not in period:
+                continue
+        filtered.append(record)
+    return filtered
+
+
+def _period_rank(period: str) -> int:
+    period = str(period or "")
+    score = 0
+    for y in ["2026", "2025", "2024", "2023", "2022"]:
+        if y in period:
+            score += int(y) * 100
+            break
+    if "1-6月" in period or "上半年" in period:
+        score += 60
+    elif "1-4月" in period:
+        score += 40
+    elif "1-3月" in period or "一季度" in period:
+        score += 30
+    elif "1-2月" in period:
+        score += 20
+    elif "年" in period:
+        score += 90
+    return score
+
+
+def _pick_best_record(records, *, indicator_keywords=None, industry_keywords=None, city_required: Optional[bool] = None):
+    indicator_keywords = indicator_keywords or []
+    industry_keywords = industry_keywords or []
+    candidates = []
+    for record in records:
+        indicator = str(record.get("indicator", "") or "")
+        industry = str(record.get("industry", "") or "")
+        city_value = str(record.get("city", "") or "")
+        if indicator_keywords and not any(keyword in indicator for keyword in indicator_keywords):
+            continue
+        if industry_keywords and not any(keyword in industry for keyword in industry_keywords):
+            continue
+        if city_required is True and not city_value:
+            continue
+        if city_required is False and city_value:
+            continue
+        candidates.append(record)
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (_period_rank(item.get("period", "")), float(item.get("yoy_pct") or 0), float(item.get("value") or 0)), reverse=True)
+    return candidates[0]
+
+
+def _clamp(value: float, low: float = 0, high: float = 100) -> float:
+    return max(low, min(high, value))
+
+
+def _fmt_trend(yoy: Optional[float]):
+    if yoy is None:
+        return "+0.0%", "up"
+    return f"{yoy:+.1f}%", "up" if yoy >= 0 else "down"
+
+
+def _build_real_dashboard_overview(province: str = "", city: str = "", industry: str = "", year: str = "all"):
+    dataset = _load_guangdong_raw_data()
+    records = dataset.get("records", [])
+    selected_province = province or dataset.get("metadata", {}).get("province", "广东")
+    scoped_records = _filter_records(records, province=selected_province, city=city, industry="", year=year)
+    industry_scoped_records = _filter_records(records, province=selected_province, city=city, industry=industry, year=year) if industry else scoped_records
+
+    gdp_record = _pick_best_record(scoped_records, indicator_keywords=["地区生产总值"])
+    social_retail_record = _pick_best_record(scoped_records, indicator_keywords=["社会消费品零售总额"])
+    deposit_record = _pick_best_record(scoped_records, indicator_keywords=["存款余额"])
+    loan_record = _pick_best_record(scoped_records, indicator_keywords=["贷款余额"])
+    revenue_record = _pick_best_record(industry_scoped_records, indicator_keywords=["营业收入"])
+    current_assets_record = _pick_best_record(industry_scoped_records, indicator_keywords=["流动资产合计"])
+    power_record = _pick_best_record(industry_scoped_records, indicator_keywords=["用电量"])
+    sales_output_record = _pick_best_record(industry_scoped_records, indicator_keywords=["规模以上工业销售产值"])
+    added_value_record = _pick_best_record(industry_scoped_records, indicator_keywords=["增加值"], industry_keywords=_industry_aliases(industry) if industry else [])
+
+    gdp_yoy = float(gdp_record.get("yoy_pct") or 0) if gdp_record else 0
+    retail_yoy = float(social_retail_record.get("yoy_pct") or 0) if social_retail_record else 0
+    deposit_yoy = float(deposit_record.get("yoy_pct") or 0) if deposit_record else 0
+    loan_yoy = float(loan_record.get("yoy_pct") or 0) if loan_record else 0
+    revenue_yoy = float(revenue_record.get("yoy_pct") or 0) if revenue_record else 0
+    assets_yoy = float(current_assets_record.get("yoy_pct") or 0) if current_assets_record else 0
+    power_yoy = float(power_record.get("yoy_pct") or 0) if power_record else 0
+    sales_yoy = float(sales_output_record.get("yoy_pct") or 0) if sales_output_record else 0
+    added_yoy = float(added_value_record.get("yoy_pct") or 0) if added_value_record else 0
+
+    economy_score = round(_clamp(72 + gdp_yoy * 3.2 + retail_yoy * 1.6), 1)
+    industry_score = round(_clamp(68 + sales_yoy * 1.7 + revenue_yoy * 1.2 + power_yoy * 0.9 + added_yoy * 1.1), 1)
+    finance_score = round(_clamp(70 + deposit_yoy * 1.3 + loan_yoy * 1.0 + max(0, retail_yoy) * 0.8), 1)
+    micro_score = round(_clamp(64 + revenue_yoy * 1.4 + assets_yoy * 0.8 - max(0, -sales_yoy) * 0.6), 1)
+    npl_value = round(_clamp(3.15 - finance_score * 0.011 - micro_score * 0.008 + max(0, -revenue_yoy) * 0.03, 0.9, 3.8), 2)
+    policy_score = round(_clamp((economy_score * 0.22) + (industry_score * 0.26) + (finance_score * 0.22) + (micro_score * 0.18) + ((4 - npl_value) * 18) * 0.12), 1)
+
+    economy_trend, economy_direction = _fmt_trend(gdp_yoy)
+    industry_trend, industry_direction = _fmt_trend(sales_yoy or added_yoy or revenue_yoy)
+    finance_trend, finance_direction = _fmt_trend((deposit_yoy + loan_yoy) / 2 if deposit_record or loan_record else 0)
+    micro_trend, micro_direction = _fmt_trend(revenue_yoy if revenue_record else assets_yoy)
+    policy_trend, policy_direction = _fmt_trend((economy_score + industry_score + finance_score + micro_score) / 100 - 3.2)
+    npl_trend = f"{-(abs(round(max(0.02, (finance_score - micro_score) / 850), 2))):+.2f}%"
+
+    scope_label = city or selected_province
+    industry_label = industry or "全行业"
+    radar_credit = round(_clamp((finance_score * 0.58 + micro_score * 0.42)), 1)
+
+    return {
+        "kpis": [
+            {
+                "id": "economy",
+                "name": "区域经济景气度",
+                "value": economy_score,
+                "trend": economy_trend,
+                "direction": economy_direction,
+                "source": f"{scope_label}地区生产总值 / 社零总额",
+                "method": "真实统计值归一化合成"
+            },
+            {
+                "id": "health",
+                "name": "行业发展健康指数",
+                "value": industry_score,
+                "trend": industry_trend,
+                "direction": industry_direction,
+                "source": f"{scope_label} · {industry_label}销售产值 / 增加值 / 用电量",
+                "method": "行业经营景气归一化"
+            },
+            {
+                "id": "env",
+                "name": "普惠金融环境指数",
+                "value": finance_score,
+                "trend": finance_trend,
+                "direction": finance_direction,
+                "source": f"{scope_label}存贷款余额与消费恢复",
+                "method": "金融支持强度代理估算"
+            },
+            {
+                "id": "micro",
+                "name": "小微企业经营健康",
+                "value": micro_score,
+                "trend": micro_trend,
+                "direction": micro_direction,
+                "source": f"{scope_label} · {industry_label}营收/流动资产",
+                "method": "经营活跃度代理估算"
+            },
+            {
+                "id": "npl",
+                "name": "普惠小微贷款不良率",
+                "value": npl_value,
+                "unit": "%",
+                "trend": npl_trend,
+                "direction": "down",
+                "source": "金融环境与经营健康联合代理",
+                "method": "真实统计代理测算"
+            },
+            {
+                "id": "policy",
+                "name": "政策实施有效性",
+                "value": policy_score,
+                "trend": policy_trend,
+                "direction": policy_direction,
+                "source": f"{scope_label} · {industry_label}真实统计综合",
+                "method": "多指标综合评分"
+            }
+        ],
+        "radar_data": [
+            {"name": "经济景气", "value": economy_score, "max": 100},
+            {"name": "行业健康", "value": industry_score, "max": 100},
+            {"name": "普惠环境", "value": finance_score, "max": 100},
+            {"name": "小微经营", "value": micro_score, "max": 100},
+            {"name": "信用环境指数", "value": radar_credit, "max": 100},
+            {"name": "政策效力", "value": policy_score, "max": 100}
+        ],
+        "last_updated": f"{scope_label} · {industry_label} · {year if year != 'all' else '全部年份'}"
+    }
+
+
+def get_raw_data_filter_options():
+    dataset = _load_guangdong_raw_data()
+    records = dataset.get("records", [])
+    provinces = sorted({str(record.get("province", "")).strip() for record in records if record.get("province")})
+    cities = sorted({str(record.get("city", "")).strip() for record in records if record.get("city")})
+    industries = [
+        option for option, aliases in MAIN_INDUSTRY_OPTION_MAP.items()
+        if any(str(record.get("industry", "")).strip() in aliases for record in records)
+    ]
+    return {
+        "provinces": provinces,
+        "cities": cities,
+        "industries": industries,
+        "dataset": {
+            "dataset_name": dataset.get("metadata", {}).get("dataset_name", "guangdong_official_raw_data"),
+            "province": dataset.get("metadata", {}).get("province", "广东"),
+            "version": dataset.get("metadata", {}).get("version", "v0.1"),
+            "collected_at": dataset.get("metadata", {}).get("collected_at", "")
+        }
+    }
+
+
+def search_raw_data(query: str = "", limit: int = 500, year: str = "all", province: str = "", city: str = "", industry: str = ""):
+    dataset = _load_guangdong_raw_data()
+    records = dataset.get("records", [])
+    q = (query or "").strip().lower()
+    province = (province or "").strip()
+    city = (city or "").strip()
+    industry = (industry or "").strip()
+    has_structured_filters = any([province, city, industry, year and year != "all"])
+
+    if not q and not has_structured_filters:
+        return {
+            "query": query,
+            "filters": {
+                "province": province,
+                "city": city,
+                "industry": industry,
+                "year": year
+            },
+            "total": 0,
+            "results": [],
+            "dataset": dataset.get("metadata", {}),
+            "message": "请选择省份、城市、行业或年份进行检索。"
+        }
+
+    tokens = [token for token in q.replace("，", " ").replace(",", " ").split() if token]
+    if not tokens:
+        tokens = [q]
+    normalized_city_tokens = {_normalize_city_token(token) for token in tokens if _normalize_city_token(token)}
+    matched_city_tokens = {city for city in normalized_city_tokens if any(str(record.get("city", "") or "").lower() == city for record in records)}
+    has_city_filter = bool(matched_city_tokens)
+
+    scored = []
+    for record in records:
+        period = str(record.get("period", ""))
+        if year and year != "all":
+            if year == "older":
+                if "2025" in period or "2024" in period:
+                    continue
+            elif year not in period:
+                continue
+
+        record_province = str(record.get("province", "") or "").strip()
+        record_city = str(record.get("city", "") or "").strip()
+        record_industry = str(record.get("industry", "") or "").strip()
+
+        if province and record_province != province:
+            continue
+        if city and record_city != city:
+            continue
+        if industry and not _record_matches_industry(record_industry, industry):
+            continue
+
+        city_value = record_city
+        city_value_lower = city_value.lower()
+
+        if has_city_filter and city_value_lower not in matched_city_tokens:
+            continue
+
+        haystack_parts = [
+            record.get("province", ""),
+            city_value,
+            record.get("industry", ""),
+            record.get("indicator", ""),
+            record.get("period", ""),
+            record.get("notes", ""),
+            record.get("source_title", "")
+        ]
+        haystack = " ".join(str(part).lower() for part in haystack_parts if part is not None)
+        matched_tokens = [token for token in tokens if token and token in haystack]
+        if tokens != [""] and q and not matched_tokens:
+            continue
+
+        score = len(matched_tokens) * 10
+        if record_province.lower() in tokens:
+            score += 6
+        if city_value_lower in matched_city_tokens:
+            score += 18
+        if record_industry.lower() in tokens:
+            score += 6
+        if record.get("indicator", "").lower() in tokens:
+            score += 6
+        if record.get("value") is not None:
+            score += 2
+
+        if record.get("value") in (None, "", "未披露"):
+            continue
+
+        indicator = str(record.get("indicator", ""))
+        record_industry_label = str(record.get("industry", ""))
+        category = str(record.get("category", ""))
+
+        priority_boost = 0
+        if "地区生产总值" in indicator:
+            priority_boost += 12
+        if "增加值" in indicator:
+            priority_boost += 10
+        if "社会消费品零售总额" in indicator:
+            priority_boost += 9
+        if "营业收入" in indicator:
+            priority_boost += 8
+        if "流动资产合计" in indicator:
+            priority_boost += 7
+        if "用电量" in indicator:
+            priority_boost += 6
+        if "贷款余额" in indicator or "存款余额" in indicator:
+            priority_boost += 6
+        if "制造业" in record_industry_label:
+            priority_boost += 5
+        if category in {"macro", "industry", "service", "consumption", "finance"}:
+            priority_boost += 4
+        if city_value:
+            priority_boost += 3
+
+        score += priority_boost
+
+        scored.append((score, record))
+
+    scored.sort(key=lambda item: (-item[0], item[1].get("period", ""), item[1].get("indicator", "")))
+    results = [item[1] for item in scored[:limit]]
+    if not results:
+        return {
+            "query": query,
+            "year": year,
+            "filters": {
+                "province": province,
+                "city": city,
+                "industry": industry,
+                "year": year
+            },
+            "total": 0,
+            "results": [],
+            "dataset": {
+                "dataset_name": dataset.get("metadata", {}).get("dataset_name", "guangdong_official_raw_data"),
+                "province": dataset.get("metadata", {}).get("province", "广东"),
+                "version": dataset.get("metadata", {}).get("version", "v0.1"),
+                "collected_at": dataset.get("metadata", {}).get("collected_at", "")
+            },
+            "message": _build_empty_search_message(province, city, industry, year)
+        }
+    return {
+        "query": query,
+        "year": year,
+        "filters": {
+            "province": province,
+            "city": city,
+            "industry": industry,
+            "year": year
+        },
+        "total": len(scored),
+        "results": results,
+        "dataset": {
+            "dataset_name": dataset.get("metadata", {}).get("dataset_name", "guangdong_official_raw_data"),
+            "province": dataset.get("metadata", {}).get("province", "广东"),
+            "version": dataset.get("metadata", {}).get("version", "v0.1"),
+            "collected_at": dataset.get("metadata", {}).get("collected_at", "")
+        },
+        "message": f"已在广东官方样本库中匹配到 {len(scored)} 条原始记录。"
+    }
 
 # ============================================================
 # 六大一级指标 KPI
 # ============================================================
-def get_dashboard_overview():
+def get_dashboard_overview(province: str = "", city: str = "", industry: str = "", year: str = "all"):
     """返回驾驶舱首屏 6 大核心 KPI + 雷达图数据"""
+    if province or city or industry or year != "all":
+        return _build_real_dashboard_overview(province=province, city=city, industry=industry, year=year)
+
     return {
         "kpis": [
             {

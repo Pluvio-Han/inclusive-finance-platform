@@ -13,7 +13,7 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="theme-light-preview">
     <!-- Cinematic Loading Screen -->
     <div id="loading-screen">
         <div class="loader-content">
@@ -40,6 +40,12 @@
             <div class="logo-container">
                 <div class="logo-icon"><i class="fa-solid fa-chart-pie"></i></div>
                 <h1 class="logo-text">普惠金融<br><span>风控大脑</span></h1>
+                <div class="mobile-university-profile" aria-label="华南师范大学标识">
+                    <div class="avatar university-badge"></div>
+                    <div class="user-meta">
+                        <strong>华南师范大学</strong>
+                    </div>
+                </div>
             </div>
             
             <nav class="nav-menu">
@@ -78,13 +84,12 @@
                 </div>
                 <div class="header-right">
                     <button class="btn-secondary evidence-trigger" id="btn-evidence">
-                        <span class="evidence-trigger-icon" aria-hidden="true"></span>
                         <span class="evidence-trigger-copy">
                             <strong>决策证据链</strong>
+                            <em>查看模型依据、数据口径与报告导出说明</em>
                         </span>
                     </button>
                     <div class="user-profile">
-                        <div class="avatar university-badge" aria-label="华南师范大学校徽"></div>
                         <div class="user-meta">
                             <strong>华南师范大学</strong>
                         </div>
@@ -94,6 +99,43 @@
 
             <!-- Dashboard View -->
             <div class="dashboard-grid view-section active" id="view-dashboard">
+                <div class="scene-search-panel glass-panel stagger-up" style="animation-delay: 0.12s;">
+                    <div class="scene-search-head">
+                        <div class="scene-search-copy">
+                            <span class="data-source-badge">原始数据检索</span>
+                            <h3>按省份、城市、行业和年份筛选相关数据</h3>
+                            <p>当前已接入广东省级与分市真实样本，支持结构化检索；其他区域与链路图谱模块基于真实样本与风险建模综合展示。</p>
+                        </div>
+                        <div class="scene-search-form">
+                            <select id="scene-search-province" class="scene-search-select" aria-label="省份筛选">
+                                <option value="">选择省份</option>
+                            </select>
+                            <select id="scene-search-city" class="scene-search-select" aria-label="城市筛选">
+                                <option value="">全部城市</option>
+                            </select>
+                            <select id="scene-search-industry" class="scene-search-select" aria-label="行业筛选">
+                                <option value="">全部行业</option>
+                            </select>
+                            <select id="scene-search-year" class="scene-search-year" aria-label="年份筛选">
+                                <option value="all">全部年份</option>
+                                <option value="2026">2026</option>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                                <option value="older">2023及以前</option>
+                            </select>
+                            <button class="btn-primary scene-search-btn" id="btn-scene-search">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <span>开始检索</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="scene-search-body">
+                        <div class="scene-search-status" id="scene-search-status">当前数据底座：广东省官方公开统计样本库，其他区域展示以广东样本扩展建模为主</div>
+                        <div class="scene-search-results" id="scene-search-results">
+                            <div class="raw-search-placeholder">请选择省份、城市、行业和年份，这里会展示对应的原始数据记录、时间口径和官方来源链接。</div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- KPIs (Sector A & Radar) -->
                 <div class="top-row-flex stagger-up" style="animation-delay: 0.2s;">
@@ -133,7 +175,7 @@
                     <!-- Radar Chart (Audit suggested) -->
                     <div class="radar-box glass-panel">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-compass"></i> 多维风险评估雷达图</h3>
+                            <h3>多维风险评估雷达图</h3>
                         </div>
                         <div id="radarChart" style="height: 180px; width: 100%;"></div>
                     </div>
@@ -144,9 +186,9 @@
                     <!-- Central Map -->
                     <div class="chart-box main-map glass-panel">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-earth-asia"></i> 全国普惠金融环境指数热力图</h3>
+                            <h3>全国普惠金融环境指数热力图</h3>
                             <div class="chart-actions">
-                                <span class="data-source-badge">模拟数据 · 框架已对接央行数据结构</span>
+                                <span class="data-source-badge">广东真实样本 + 区域风险建模展示</span>
                             </div>
                         </div>
                         <div class="chart-content" id="mapChart"></div>
@@ -157,7 +199,7 @@
                         <!-- Policy Simulator Widget -->
                         <div class="chart-box policy-sim glass-panel">
                             <div class="chart-header">
-                                <h3><i class="fa-solid fa-sliders"></i> 动态政策模拟沙盘</h3>
+                                <h3>动态政策模拟沙盘</h3>
                             </div>
                             <div class="sim-controls">
                                 <div class="control-group">
@@ -185,7 +227,8 @@
                         <!-- Relation Graph / Industry -->
                         <div class="chart-box relation-graph glass-panel">
                             <div class="chart-header">
-                                <h3><i class="fa-solid fa-network-wired"></i> 产业链风险传导图谱</h3>
+                                <h3>产业链风险传导图谱</h3>
+                                <span class="data-source-badge">广东样本场景 + 风险传导模型示意</span>
                             </div>
                             <div class="chart-content" id="relationChart"></div>
                             <div class="industry-link-panel" id="industry-link-panel">
@@ -201,14 +244,14 @@
                 <div class="bottom-row stagger-up" style="animation-delay: 0.6s;">
                     <div class="bottom-trend glass-panel">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-chart-area"></i> 普惠小微贷款不良率追踪与 LSTM 预测</h3>
+                            <h3>普惠小微贷款不良率追踪与 LSTM 预测</h3>
                             <span class="data-source-badge">模型置信度 95.8% · LSTM 长短期记忆网络</span>
                         </div>
                         <div class="chart-content" id="trendChart"></div>
                     </div>
                     <div class="radar-box glass-panel">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-file-circle-check"></i> 当前阶段系统结论</h3>
+                            <h3>当前阶段系统结论</h3>
                         </div>
                         <div class="evidence-mini">
                             <div class="mini-item">
@@ -247,8 +290,8 @@
                         <div class="analysis-hero-head">
                             <div class="analysis-hero-copy">
                                 <span class="data-source-badge">行业风险演化引擎</span>
-                                <h3><i class="fa-solid fa-chart-line"></i> 行业风险演化视图</h3>
-                                <p>围绕行业景气、账期压力、融资成本与补贴敏感度，展示风险如何沿时间维度与关键节点逐步传导。</p>
+                                <h3>行业风险演化视图</h3>
+                                <p>围绕行业景气、账期压力、融资成本与补贴敏感度，结合真实统计样本与风险推算，展示风险如何沿时间维度与关键节点逐步传导。</p>
                             </div>
                             <div class="segmented-control" id="industry-switcher">
                                 <button class="segment-btn active" data-industry="manufacturing">制造业</button>
@@ -277,15 +320,15 @@
 
                     <div class="glass-panel chart-box analysis-chart-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-wave-square"></i> 行业风险指数 12 个月演化</h3>
-                            <span class="data-source-badge">模拟时间序列 · 风险脉冲已平滑处理</span>
+                            <h3>行业风险指数 12 个月演化</h3>
+                            <span class="data-source-badge">真实样本映射 + 行业风险时间序列推算</span>
                         </div>
                         <div id="industryEvolutionChart" class="analysis-chart"></div>
                     </div>
 
                     <div class="glass-panel chart-box analysis-chart-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-table-cells-large"></i> 风险驱动因子热力拆解</h3>
+                            <h3>风险驱动因子热力拆解</h3>
                             <span class="data-source-badge">账期 / 成本 / 补贴敏感度</span>
                         </div>
                         <div id="industryDriverHeatmap" class="analysis-chart compact"></div>
@@ -293,7 +336,7 @@
 
                     <div class="glass-panel chart-box insight-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-sitemap"></i> 传导链路结论</h3>
+                            <h3>传导链路结论</h3>
                         </div>
                         <div class="insight-list" id="industryInsightList">
                             <div class="insight-item">
@@ -305,7 +348,7 @@
 
                     <div class="glass-panel chart-box analysis-chart-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-bars-progress"></i> 重点节点风险热度排序</h3>
+                            <h3>重点节点风险热度排序</h3>
                             <span class="data-source-badge">用于产业链联动策略切入</span>
                         </div>
                         <div id="industryNodeRanking" class="analysis-chart compact"></div>
@@ -318,8 +361,8 @@
                         <div class="analysis-hero-head">
                             <div class="analysis-hero-copy">
                                 <span class="data-source-badge">区域画像规划台</span>
-                                <h3><i class="fa-solid fa-map-location-dot"></i> 区域下钻规划</h3>
-                                <p>聚焦区域信用环境、小微经营健康、产业结构和风险归因，为不同省份生成可讲、可比、可落地的策略画像。</p>
+                                <h3>区域下钻规划</h3>
+                                <p>聚焦区域信用环境、小微经营健康、产业结构和风险归因，当前以广东真实样本为底座，对不同省份生成可讲、可比、可落地的策略画像。</p>
                             </div>
                             <div class="segmented-control" id="region-switcher">
                                 <button class="segment-btn active" data-province="广东">广东</button>
@@ -349,15 +392,15 @@
 
                     <div class="glass-panel chart-box analysis-chart-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-earth-asia"></i> 区域信用热力与预警定位</h3>
-                            <span class="data-source-badge">点击省份可联动画像与侧栏</span>
+                            <h3>区域信用热力与预警定位</h3>
+                            <span class="data-source-badge">广东真实样本映射 + 区域画像建模展示</span>
                         </div>
                         <div id="regionMapChart" class="analysis-chart"></div>
                     </div>
 
                     <div class="glass-panel chart-box insight-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-magnifying-glass-chart"></i> 区域诊断摘要</h3>
+                            <h3>区域诊断摘要</h3>
                         </div>
                         <div class="insight-list" id="regionInsightList">
                             <div class="insight-item">
@@ -369,7 +412,7 @@
 
                     <div class="glass-panel chart-box analysis-chart-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-chart-pie"></i> 区域产业结构分布</h3>
+                            <h3>区域产业结构分布</h3>
                             <span class="data-source-badge">重点行业暴露结构</span>
                         </div>
                         <div id="regionStructureChart" class="analysis-chart compact"></div>
@@ -377,7 +420,7 @@
 
                     <div class="glass-panel chart-box analysis-chart-box">
                         <div class="chart-header">
-                            <h3><i class="fa-solid fa-sliders"></i> 风险因子贡献排序</h3>
+                            <h3>风险因子贡献排序</h3>
                             <span class="data-source-badge">用于区域策略归因</span>
                         </div>
                         <div id="regionRiskFactorChart" class="analysis-chart compact"></div>
@@ -457,7 +500,7 @@
                     <div class="comparison-center">
                         <div class="glass-panel comparison-chart-box">
                             <div class="chart-header">
-                                <h3><i class="fa-solid fa-scale-balanced"></i> 情景 A vs B &mdash; 核心指标对比</h3>
+                                <h3>情景 A vs B &mdash; 核心指标对比</h3>
                                 <button class="btn-primary" id="btn-compare" style="padding: 8px 16px; font-size:13px;">
                                     <i class="fa-solid fa-bolt"></i> 运行对比推演
                                 </button>
@@ -466,7 +509,7 @@
                         </div>
                         <div class="glass-panel comparison-chart-box" style="margin-top:15px;">
                             <div class="chart-header">
-                                <h3><i class="fa-solid fa-chart-line"></i> 不良率下降路径对比</h3>
+                                <h3>不良率下降路径对比</h3>
                             </div>
                             <div id="compareTrendChart" style="height: 220px;"></div>
                         </div>
@@ -515,16 +558,16 @@
     <div id="evidence-panel" class="evidence-overlay">
         <div class="evidence-box glass-panel">
             <div class="evidence-header">
-                <h3><i class="fa-solid fa-file-shield"></i> 决策支持证据链报告</h3>
+                <h3>决策支持证据链报告</h3>
                 <div class="close-evidence" id="close-evidence">×</div>
             </div>
             <div class="evidence-content">
                 <div class="e-section">
-                    <h4><i class="fa-solid fa-microchip"></i> 算法与模型说明</h4>
+                    <h4>算法与模型说明</h4>
                     <p>本平台当前阶段以 <strong>PSM-DID</strong> 作为政策净效应测算主口径，以 <strong>LSTM</strong> 生成不良率趋势预测，并通过 AHP、熵权与 PCA 的指标体系完成首页综合评分展示。</p>
                 </div>
                 <div class="e-section">
-                    <h4><i class="fa-solid fa-database"></i> 数据来源可信度</h4>
+                    <h4>数据来源可信度</h4>
                     <ul class="e-list">
                         <li><strong>宏观数据</strong>: 国家统计局 GDP、PMI 等统计口径结构</li>
                         <li><strong>金融数据</strong>: 央行、银保监及地方监管报表口径映射</li>
@@ -532,7 +575,7 @@
                     </ul>
                 </div>
                 <div class="e-section">
-                    <h4><i class="fa-solid fa-check-double"></i> 逻辑验证摘要</h4>
+                    <h4>逻辑验证摘要</h4>
                     <div class="e-table-wrapper">
                         <table class="e-table">
                             <thead><tr><th>指标</th><th>逻辑校验状态</th><th>审计依据</th></tr></thead>
@@ -545,7 +588,7 @@
                     </div>
                 </div>
                 <div class="e-section evidence-note-block">
-                    <h4><i class="fa-solid fa-file-circle-check"></i> 证据输出说明</h4>
+                    <h4>证据输出说明</h4>
                     <p>导出报告将同步整合当前政策推演结果、产业链上下文、区域下钻画像与评分卡指标，用于形成结构化决策说明，不额外拼接答辩脚本化内容。</p>
                 </div>
             </div>

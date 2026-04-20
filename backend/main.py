@@ -65,9 +65,14 @@ async def serve_assets(filename: str):
 
 
 @app.get("/api/v1/dashboard/overview", response_model=schemas.DashboardOverviewResponse)
-async def dashboard_overview():
+async def dashboard_overview(
+    province: str = Query("", description="省份筛选"),
+    city: str = Query("", description="城市筛选"),
+    industry: str = Query("", description="行业筛选"),
+    year: str = Query("all", description="年份筛选: all/2026/2025/2024/older")
+):
     """综合驾驶舱首屏 6 大核心 KPI + 雷达图数据"""
-    return dp.get_dashboard_overview()
+    return dp.get_dashboard_overview(province=province, city=city, industry=industry, year=year)
 
 
 @app.get("/api/v1/risk/map", response_model=schemas.RiskMapResponse)
@@ -114,6 +119,25 @@ async def policy_simulate(req: schemas.PolicyRequest = Body(...)):
 async def province_detail(province_name: str):
     """省份风险画像下钔详情"""
     return dp.get_province_detail(province_name)
+
+
+@app.get("/api/v1/data/search")
+async def data_search(
+    q: str = Query("", description="原始数据搜索关键词，如 广东 制造业、深圳 工业、社零"),
+    province: str = Query("", description="省份筛选"),
+    city: str = Query("", description="城市筛选"),
+    industry: str = Query("", description="行业筛选"),
+    year: str = Query("all", description="年份筛选: all/2026/2025/2024/older"),
+    limit: int = Query(500, ge=1, le=1000, description="返回的最大记录数")
+):
+    """原始数据检索：面向已导入的真实底表"""
+    return dp.search_raw_data(q, limit=limit, year=year, province=province, city=city, industry=industry)
+
+
+@app.get("/api/v1/data/options")
+async def data_options():
+    """原始数据筛选项：省份 / 城市 / 行业"""
+    return dp.get_raw_data_filter_options()
 
 
 # ============================================================

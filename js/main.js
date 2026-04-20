@@ -20,6 +20,7 @@ let activeIndustryNode = null;
 let currentIndustryView = 'manufacturing';
 let currentRegionView = '广东';
 let regionGeoLoaded = false;
+let dashboardBaseOverview = null;
 
 const industryScenarioLibrary = {
     manufacturing: {
@@ -350,6 +351,221 @@ function buildLocalPolicyResult(guaranteeRate, interestOffset, subsidyLevel) {
                 ? '政策力度适中，建议结合地方财政承受能力逐步推广。'
                 : '当前参数调整幅度较小，政策边际效应有限，建议适度加大担保或利率优惠。'
     };
+}
+
+function applyDashboardOverview(data) {
+    if (data && data.kpis) {
+        data.kpis.forEach(kpi => {
+            const valEl = document.getElementById(`kpi-${kpi.id}`);
+            if (valEl) {
+                let valStr = kpi.value;
+                if (kpi.id === 'npl') valStr = `${kpi.value}<span class="kpi-unit">%</span>`;
+                valEl.innerHTML = `${valStr}<span class="kpi-trend ${kpi.direction}">
+                    <i class="fa-solid fa-arrow-${kpi.direction}"></i> ${kpi.trend}</span>`;
+            }
+        });
+    }
+
+    if (data?.radar_data) renderRadarChart(data.radar_data);
+}
+
+function formatRawValue(value, unit) {
+    if (value === null || value === undefined || value === '') return `未披露${unit ? ` (${unit})` : ''}`;
+    if (typeof value === 'number') {
+        return `${value.toLocaleString('zh-CN')}${unit ? ` ${unit}` : ''}`;
+    }
+    return `${value}${unit ? ` ${unit}` : ''}`;
+}
+
+function renderRawSearchResults(payload) {
+    const container = document.getElementById('scene-search-results');
+    const statusEl = document.getElementById('scene-search-status');
+    if (!container) return;
+
+    if (!payload || !Array.isArray(payload.results) || payload.results.length === 0) {
+        if (statusEl) {
+            statusEl.innerText = payload?.message || '未检索到匹配记录，请更换关键词重试。';
+        }
+        const guide = payload?.filters?.city && payload?.filters?.industry
+            ? '建议优先切换为“规模以上工业”，或先将城市改为“全部城市”再查看该行业。'
+            : '建议放宽年份条件，或切换到当前底表覆盖更充分的主行业后再检索。';
+        container.innerHTML = `
+            <div class="raw-search-placeholder">
+                <strong>${payload?.message || '未检索到匹配记录。'}</strong>
+                <span>${guide}</span>
+            </div>
+        `;
+        return;
+    }
+
+    if (statusEl) {
+        statusEl.innerText = `${payload.message} 当前样本库版本：${payload.dataset?.version || 'v0.1'}。`;
+    }
+
+    const cards = payload.results.map(item => {
+        const locationTag = item.city ? `${item.province} · ${item.city}` : item.province;
+        const yoyTag = item.yoy_pct !== null && item.yoy_pct !== undefined
+            ? `<span class="raw-result-tag">同比 ${item.yoy_pct}%</span>`
+            : '';
+        return `
+            <div class="raw-result-card">
+                <div class="raw-result-meta">
+                    <span class="raw-result-origin"><i class="fa-solid fa-shield-halved"></i> ${item.source_org}</span>
+                    <span>${locationTag} · ${item.period}</span>
+                </div>
+                <div class="raw-result-title">${item.industry} · ${item.indicator}</div>
+                <div class="raw-result-value">
+                    <strong>${formatRawValue(item.value, item.unit)}</strong>
+                </div>
+                <div class="raw-result-tags">
+                    <span class="raw-result-tag">${item.category}</span>
+                    <span class="raw-result-tag">${item.frequency}</span>
+                    ${yoyTag}
+                </div>
+                <div class="raw-result-source">
+                    <div>${locationTag} · ${item.source_title}</div>
+                    <a href="${item.source_url}" target="_blank" rel="noopener noreferrer">查看官方来源</a>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="raw-search-summary">
+            <span>省份：<strong>${payload.filters?.province || '全部'}</strong></span>
+            <span>城市：<strong>${payload.filters?.city || '全部城市'}</strong></span>
+            <span>行业：<strong>${payload.filters?.industry || '全部行业'}</strong></span>
+            <span>年份：<strong>${payload.year === 'older' ? '2023及以前' : (payload.year || 'all') === 'all' ? '全部年份' : payload.year}</strong></span>
+            <span>共匹配 <strong>${payload.total}</strong> 条，当前已展示 <strong>${payload.results.length}</strong> 条</span>
+            <span>数据集：<strong>${payload.dataset?.dataset_name || 'guangdong_official_raw_data'}</strong></span>
+        </div>
+        <div class="raw-search-scroll">
+            <div class="raw-search-grid">${cards}</div>
+        </div>
+    `;
+}
+
+function getRawSearchFilters() {
+    return {
+        province: document.getElementById('scene-search-province')?.value || '',
+        city: document.getElementById('scene-search-city')?.value || '',
+        industry: document.getElementById('scene-search-industry')?.value || '',
+        year: document.getElementById('scene-search-year')?.value || 'all'
+    };
+}
+
+async function refreshDashboardOverviewByFilters(filters) {
+    const params = new URLSearchParams({
+        province: filters.province || '',
+        city: filters.city || '',
+        industry: filters.industry || '',
+        year: filters.year || 'all'
+    });
+
+    const data = await fetchData(`/dashboard/overview?${params.toString()}`, dashboardBaseOverview || {
+        kpis: mockData.kpis,
+        radar_data: [
+            {name: "经济景气", value: 86, max: 100},
+            {name: "行业健康", value: 78, max: 100},
+            {name: "普惠环境", value: 82, max: 100},
+            {name: "小微经营", value: 71, max: 100},
+            {name: "信用环境", value: 75, max: 100},
+            {name: "政策效力", value: 92, max: 100}
+        ]
+    });
+
+    applyDashboardOverview(data);
+}
+
+function fillSelectOptions(selectEl, options, placeholder, selectedValue = '') {
+    if (!selectEl) return;
+    const items = [`<option value="">${placeholder}</option>`];
+    options.forEach(option => {
+        const selected = option === selectedValue ? 'selected' : '';
+        items.push(`<option value="${option}" ${selected}>${option}</option>`);
+    });
+    selectEl.innerHTML = items.join('');
+}
+
+function syncSceneSearchSelectState(selectEl) {
+    if (!selectEl) return;
+    const hasValue = Boolean(selectEl.value && selectEl.value !== 'all');
+    selectEl.classList.toggle('has-value', hasValue);
+}
+
+async function initRawDataSelectors() {
+    const provinceEl = document.getElementById('scene-search-province');
+    const cityEl = document.getElementById('scene-search-city');
+    const industryEl = document.getElementById('scene-search-industry');
+    const yearEl = document.getElementById('scene-search-year');
+    const statusEl = document.getElementById('scene-search-status');
+    if (!provinceEl || !cityEl || !industryEl) return;
+
+    const payload = await fetchData('/data/options', {
+        provinces: ['广东'],
+        cities: [],
+        industries: [],
+        dataset: { version: 'v0.1' }
+    });
+
+    const provinces = payload?.provinces || ['广东'];
+    const cities = payload?.cities || [];
+    const industries = payload?.industries || [];
+
+    fillSelectOptions(provinceEl, provinces, '选择省份', provinces.includes('广东') ? '广东' : '');
+    fillSelectOptions(cityEl, cities, '全部城市');
+    fillSelectOptions(industryEl, industries, '全部行业');
+    [provinceEl, cityEl, industryEl, yearEl].forEach(syncSceneSearchSelectState);
+
+    if (statusEl && payload?.dataset?.version) {
+        statusEl.innerText = `当前数据底座：广东省官方公开统计样本库，当前样本库版本：${payload.dataset.version}。`;
+    }
+
+    await refreshDashboardOverviewByFilters(getRawSearchFilters());
+}
+
+async function runRawDataSearch() {
+    const filters = getRawSearchFilters();
+    const provinceValue = filters.province;
+    const cityValue = filters.city;
+    const industryValue = filters.industry;
+    const statusEl = document.getElementById('scene-search-status');
+    const container = document.getElementById('scene-search-results');
+    const yearValue = filters.year;
+    if (!provinceValue && !cityValue && !industryValue && yearValue === 'all') {
+        renderRawSearchResults({
+            message: '请选择省份、城市、行业或年份进行检索。',
+            results: [],
+            filters
+        });
+        return;
+    }
+
+    if (statusEl) {
+        statusEl.innerText = `正在检索 ${provinceValue || '广东样本库'} ${cityValue || ''} ${industryValue || ''} ${yearValue !== 'all' ? `（${yearValue === 'older' ? '2023及以前' : yearValue}）` : ''} 对应的官方原始数据...`;
+    }
+    if (container) {
+        container.innerHTML = `<div class="raw-search-placeholder">正在检索中，请稍候...</div>`;
+    }
+
+    const params = new URLSearchParams({
+        limit: '500',
+        year: yearValue,
+        province: provinceValue,
+        city: cityValue,
+        industry: industryValue
+    });
+
+    const payload = await fetchData(`/data/search?${params.toString()}`, {
+        query: '',
+        filters,
+        total: 0,
+        results: [],
+        dataset: { dataset_name: 'guangdong_official_raw_data', version: 'v0.1' },
+        message: '当前后端检索接口不可用。'
+    });
+    renderRawSearchResults(payload);
+    await refreshDashboardOverviewByFilters(filters);
 }
 
 function buildLocalIndustryGraph(industry = 'manufacturing') {
@@ -891,17 +1107,227 @@ function buildPrintReportHtml() {
     `;
 }
 
+function buildPrintDocumentHtml(reportHtml) {
+    return `
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>普惠金融政策建议报告</title>
+            <style>
+                :root {
+                    color-scheme: light;
+                }
+                * {
+                    box-sizing: border-box;
+                }
+                body {
+                    margin: 0;
+                    background: #ffffff;
+                    color: #0f172a;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+                }
+                .report-shell {
+                    background: #ffffff;
+                    color: #0f172a;
+                    min-height: 100vh;
+                    padding: 32px 36px;
+                }
+                .report-header {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 24px;
+                    padding-bottom: 18px;
+                    border-bottom: 2px solid #dbeafe;
+                    margin-bottom: 20px;
+                }
+                .report-title {
+                    font-size: 28px;
+                    color: #0f172a;
+                    margin: 0 0 8px;
+                }
+                .report-subtitle {
+                    color: #475569;
+                    line-height: 1.7;
+                    max-width: 720px;
+                    margin: 0;
+                }
+                .report-meta {
+                    min-width: 220px;
+                    display: grid;
+                    gap: 8px;
+                    font-size: 13px;
+                    color: #475569;
+                }
+                .report-meta strong,
+                .report-card strong,
+                .report-table th,
+                .report-section h2,
+                .report-title,
+                .report-card h3 {
+                    color: #0f172a;
+                }
+                .report-kicker {
+                    display: inline-block;
+                    font-size: 12px;
+                    letter-spacing: 1.2px;
+                    color: #2563eb;
+                    margin-bottom: 10px;
+                }
+                .report-section {
+                    margin-top: 24px;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
+                .report-section h2 {
+                    font-size: 18px;
+                    margin: 0 0 12px;
+                }
+                .report-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 14px;
+                }
+                .report-card {
+                    border: 1px solid #dbeafe;
+                    border-radius: 10px;
+                    background: #f8fbff;
+                    padding: 14px 16px;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
+                .report-card h3 {
+                    font-size: 14px;
+                    margin: 0 0 8px;
+                }
+                .report-card p,
+                .report-card li {
+                    color: #475569;
+                    line-height: 1.7;
+                    font-size: 13px;
+                }
+                .report-summary-grid,
+                .report-score-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, minmax(0, 1fr));
+                    gap: 12px;
+                }
+                .report-metric,
+                .report-score {
+                    border: 1px solid #dbeafe;
+                    border-radius: 10px;
+                    background: #ffffff;
+                    padding: 14px;
+                }
+                .report-metric span,
+                .report-score span {
+                    display: block;
+                    color: #64748b;
+                    font-size: 12px;
+                    margin-bottom: 8px;
+                }
+                .report-metric strong,
+                .report-score strong {
+                    display: block;
+                    color: #0f172a;
+                    font-size: 20px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+                }
+                .report-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 13px;
+                }
+                .report-table th,
+                .report-table td {
+                    padding: 10px 12px;
+                    border: 1px solid #dbeafe;
+                    text-align: left;
+                    vertical-align: top;
+                }
+                .report-table th {
+                    background: #eff6ff;
+                }
+                .report-footer {
+                    margin-top: 28px;
+                    padding-top: 14px;
+                    border-top: 1px solid #dbeafe;
+                    color: #64748b;
+                    font-size: 12px;
+                    line-height: 1.7;
+                }
+                .report-list {
+                    list-style: none;
+                    display: grid;
+                    gap: 8px;
+                    padding: 0;
+                    margin: 0;
+                }
+                .report-list li {
+                    display: flex;
+                    gap: 8px;
+                }
+                .report-list li::before {
+                    content: "•";
+                    color: #2563eb;
+                    flex: 0 0 auto;
+                }
+                .report-highlight {
+                    border-left: 4px solid #10b981;
+                    padding-left: 14px;
+                    background: #f0fdf4;
+                }
+                a {
+                    color: #2563eb;
+                    text-decoration: none;
+                }
+                @page {
+                    size: A4 portrait;
+                    margin: 14mm;
+                }
+            </style>
+        </head>
+        <body>
+            ${reportHtml}
+        </body>
+        </html>
+    `;
+}
+
 function exportDecisionReport() {
-    const root = document.getElementById('report-print-root');
-    if (!root) return;
+    let reportHtml = '';
     try {
-        root.innerHTML = buildPrintReportHtml();
+        reportHtml = buildPrintReportHtml();
     } catch (e) {
         console.error('[Report] 报告生成失败', e);
         return;
     }
-    document.body.classList.add('print-mode');
-    window.print();
+    const existingFrame = document.getElementById('report-print-frame');
+    existingFrame?.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'report-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+
+    iframe.onload = () => {
+        const frameWindow = iframe.contentWindow;
+        if (!frameWindow) return;
+        setTimeout(() => {
+            frameWindow.focus();
+            frameWindow.print();
+            setTimeout(() => iframe.remove(), 1000);
+        }, 300);
+    };
+
+    document.body.appendChild(iframe);
+    iframe.srcdoc = buildPrintDocumentHtml(reportHtml);
 }
 
 // ============================================================
@@ -937,6 +1363,10 @@ setInterval(() => {
 
 function activateView(viewName, options = {}) {
     reportState.activeView = viewName;
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.querySelector('.main-content')?.scrollTo({ top: 0, behavior: 'auto' });
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.classList.toggle('active', nav.dataset.view === viewName);
     });
@@ -959,6 +1389,7 @@ function activateView(viewName, options = {}) {
     }
 
     setTimeout(() => {
+        if (targetView) targetView.scrollTop = 0;
         if (targetViewId === 'view-trend') {
             renderIndustryEvolutionView(currentIndustryView);
         } else if (targetViewId === 'view-map') {
@@ -1136,20 +1567,8 @@ async function initDashboardOverview() {
         ]
     });
 
-    if (data && data.kpis) {
-        data.kpis.forEach(kpi => {
-            const valEl = document.getElementById(`kpi-${kpi.id}`);
-            if (valEl) {
-                let valStr = kpi.value;
-                if (kpi.id === 'npl') valStr = kpi.value + '%';
-                valEl.innerHTML = `${valStr}<span class="kpi-trend ${kpi.direction}">
-                    <i class="fa-solid fa-arrow-${kpi.direction}"></i> ${kpi.trend}</span>`;
-            }
-        });
-    }
-
-    // Init Radar Chart
-    if (data.radar_data) renderRadarChart(data.radar_data);
+    dashboardBaseOverview = data;
+    applyDashboardOverview(data);
 
     if (!reportState.latestPolicyResult) {
         reportState.latestPolicyResult = buildLocalPolicyResult(
@@ -1164,15 +1583,28 @@ function renderRadarChart(radarData) {
     const radarContainer = document.getElementById('radarChart');
     if (!radarContainer) return;
     radarChart = echarts.init(radarContainer);
+    const isLightTheme = document.body.classList.contains('theme-light-preview');
     const option = {
         radar: {
             indicator: radarData.map(item => ({ name: item.name, max: item.max })),
             radius: '65%',
             splitNumber: 4,
-            axisName: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
-            splitLine: { lineStyle: { color: 'rgba(52, 152, 219, 0.2)' } },
+            axisName: {
+                color: isLightTheme ? 'rgba(32, 47, 72, 0.74)' : 'rgba(255,255,255,0.7)',
+                fontSize: 10,
+                fontWeight: 600
+            },
+            splitLine: {
+                lineStyle: {
+                    color: isLightTheme ? 'rgba(96, 145, 210, 0.22)' : 'rgba(52, 152, 219, 0.2)'
+                }
+            },
             splitArea: { show: false },
-            axisLine: { lineStyle: { color: 'rgba(52, 152, 219, 0.2)' } }
+            axisLine: {
+                lineStyle: {
+                    color: isLightTheme ? 'rgba(96, 145, 210, 0.22)' : 'rgba(52, 152, 219, 0.2)'
+                }
+            }
         },
         series: [{
             name: '综合评估',
@@ -1180,8 +1612,9 @@ function renderRadarChart(radarData) {
             data: [{
                 value: radarData.map(item => item.value),
                 name: '当前现状',
-                itemStyle: { color: '#3498db' },
-                areaStyle: { color: 'rgba(52, 152, 219, 0.4)' },
+                itemStyle: { color: isLightTheme ? '#4f8fe6' : '#3498db' },
+                lineStyle: { color: isLightTheme ? '#4f8fe6' : '#3498db', width: 3 },
+                areaStyle: { color: isLightTheme ? 'rgba(79, 143, 230, 0.26)' : 'rgba(52, 152, 219, 0.4)' },
                 symbol: 'none'
             }]
         }]
@@ -1206,8 +1639,6 @@ document.getElementById('btn-export-report')?.addEventListener('click', () => {
 });
 window.addEventListener('afterprint', () => {
     document.body.classList.remove('print-mode');
-    const root = document.getElementById('report-print-root');
-    if (root) root.innerHTML = '';
 });
 
 async function initCharts() {
@@ -1872,6 +2303,39 @@ simSubsidy.addEventListener('input', (e) => {
     valSubsidy.innerText = val === 1 ? '低' : (val === 2 ? '中' : '高');
 });
 updateSimulatorBadges();
+
+initRawDataSelectors();
+
+document.getElementById('btn-scene-search')?.addEventListener('click', () => {
+    runRawDataSearch();
+});
+
+document.getElementById('scene-search-year')?.addEventListener('change', () => {
+    syncSceneSearchSelectState(document.getElementById('scene-search-year'));
+    runRawDataSearch();
+});
+
+document.getElementById('scene-search-province')?.addEventListener('change', () => {
+    syncSceneSearchSelectState(document.getElementById('scene-search-province'));
+    const provinceValue = document.getElementById('scene-search-province')?.value || '';
+    const cityEl = document.getElementById('scene-search-city');
+    if (!cityEl) return;
+    if (provinceValue && provinceValue !== '广东') {
+        fillSelectOptions(cityEl, [], '全部城市');
+    }
+    syncSceneSearchSelectState(cityEl);
+    runRawDataSearch();
+});
+
+document.getElementById('scene-search-city')?.addEventListener('change', () => {
+    syncSceneSearchSelectState(document.getElementById('scene-search-city'));
+    runRawDataSearch();
+});
+
+document.getElementById('scene-search-industry')?.addEventListener('change', () => {
+    syncSceneSearchSelectState(document.getElementById('scene-search-industry'));
+    runRawDataSearch();
+});
 
 // 运行模拟推演
 document.getElementById('btn-simulate').addEventListener('click', async () => {
