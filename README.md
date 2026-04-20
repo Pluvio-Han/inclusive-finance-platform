@@ -150,50 +150,18 @@ uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 http://127.0.0.1:8001
 ```
 
-## 线上部署信息
+## 线上访问
 
-### 域名
+平台当前已完成线上发布，可通过以下地址访问：
 
 - https://pluviohan.com
 - https://www.pluviohan.com
 
-### 服务器
+说明：
 
-- Provider: 腾讯云 Lighthouse
-- OS: Ubuntu Server 22.04 LTS 64bit
-- Public IP: `106.53.76.27`
-
-### 部署目录
-
-```text
-/opt/inclusive-finance-platform
-```
-
-### 虚拟环境
-
-```text
-/opt/inclusive-finance-platform/.venv
-```
-
-### systemd 服务
-
-```bash
-sudo systemctl status inclusive-finance
-sudo systemctl restart inclusive-finance
-sudo journalctl -u inclusive-finance -n 100 --no-pager
-```
-
-### Nginx
-
-```bash
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-### HTTPS
-
-- Certbot / Let's Encrypt
-- 证书覆盖：`pluviohan.com`、`www.pluviohan.com`
+- 当前线上环境已启用 HTTPS
+- 线上部署采用 Linux 服务器 + 反向代理 + Python 应用服务的标准方案
+- 出于安全考虑，仓库中不公开服务器 IP、部署目录、进程名、证书路径和运维口令
 
 ## 重新部署注意事项
 
@@ -202,13 +170,13 @@ sudo systemctl restart nginx
 1. 本地修改代码
 2. 提交到 GitHub
 3. 打包同步到服务器
-4. 覆盖 `/opt/inclusive-finance-platform`
-5. 保留 `.venv`
-6. 重启 `inclusive-finance`
+4. 覆盖线上应用目录
+5. 保留服务器既有运行环境
+6. 重启应用服务并验证页面可访问
 
 部署时请注意：
 
-- 不要删除服务器上的 `.venv`，除非明确要重建依赖环境
+- 不要删除服务器上的既有运行环境，除非明确要重建依赖
 - 不要重新引入外部 CDN
 - 保持静态资源相对路径
 - 若使用 macOS 打包上传，注意不要把本地虚拟环境覆盖到服务器
