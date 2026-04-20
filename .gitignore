@@ -4,6 +4,12 @@
 __pycache__/
 .pytest_cache/
 .venv/
+.coverage
+.coverage.*
+*.swp
+*.swo
+*.tmp
+*.temp
 
 # Local runtime artifacts
 backend.log
@@ -16,3 +22,6 @@ docs/.Rhistory
 *.fdb_latexmk
 *.fls
 *.xdv
+*.out
+*.toc
+*.synctex.gz

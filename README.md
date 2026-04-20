@@ -2,85 +2,181 @@
 
 “区域与行业大数据驱动的普惠金融风险动态评估平台”竞赛演示版本。
 
-当前版本定位：
-- 面向“三创赛”路演展示
-- 前后端同源部署
-- 完全离线资源可运行
-- 目前以模拟数据驱动全链路演示，真实数据接入留作后续阶段
+本项目面向“三创赛”路演场景，目标是展示一套完整的普惠金融风险评估闭环：
+
+- 原始数据检索
+- 综合驾驶舱监测
+- 行业演化分析
+- 区域下钻画像
+- 政策模拟推演
+- 决策证据链与报告导出
+
+当前仓库中的版本已经是可部署、可路演、可通过域名访问的稳定基线版本。
+
+## 当前版本状态
+
+当前版本不是纯静态原型，已经具备以下能力：
+
+- 广东省官方公开统计样本已接入平台底表
+- 首页支持按省份、城市、行业、年份筛选真实样本
+- 首页六大 KPI 与雷达图可随筛选条件动态刷新
+- 原始数据检索模块可展示结构化底表记录与官方来源链接
+- 区域热力图、行业演化、产业链图谱、政策模拟与报告导出已形成闭环
+- 前端依赖、ECharts、地图 GeoJSON、字体图标全部本地化，支持离线演示
+- 已部署到腾讯云服务器，并通过自有域名和 HTTPS 提供访问
+
+需要明确说明的是：
+
+- 广东省级与部分市级样本属于真实接入数据
+- 首页筛选态六大指标属于“真实样本驱动 + 规则合成”
+- 全国热力图、行业演化、区域画像、产业链图谱和部分政策推演内容属于“真实样本基础上的建模展示层”
 
 ## 技术栈
-- Backend: FastAPI
-- Frontend: 原生 HTML / CSS / JavaScript
-- Charts: ECharts
-- Schema validation: Pydantic
 
-## 核心功能
-- 综合驾驶舱首页
-- 行业演化视图
-- 区域下钻规划
-- 政策模拟平台
-- 决策证据链面板
-- 报告导出
+- Backend: FastAPI
+- Schema Validation: Pydantic
+- Frontend: 原生 HTML / CSS / JavaScript
+- Visualization: ECharts 5.x
+- Deployment: Ubuntu + systemd + Nginx + HTTPS
+
+## 核心模块
+
+### 1. 综合驾驶舱
+
+- 六大 KPI 动态刷新
+- 雷达图综合展示
+- 原始数据筛选入口
+- 全国热力图与省份侧栏
+- 政策模拟器快捷入口
+
+### 2. 原始数据检索
+
+- 按省份、城市、行业、年份筛选
+- 优先展示已披露、可解释、高优先级记录
+- 展示指标值、时间口径、同比信息和官方来源链接
+
+### 3. 行业演化视图
+
+- 行业风险指数时间演化
+- 风险驱动因子热力拆解
+- 节点风险排序
+- 结论与政策方向建议
+
+### 4. 区域下钻规划
+
+- 区域信用与小微经营画像
+- 区域产业结构分布
+- 风险因子贡献排序
+- 区域政策建议组合
+
+### 5. 政策模拟平台
+
+- 担保拨备率调整
+- 利率优惠幅度调整
+- 补贴覆盖等级调整
+- PSM-DID 逻辑下的情景推演
+- ROI、覆盖面、实施难度评分卡
+
+### 6. 决策证据链与报告导出
+
+- 展示模型依据和数据口径
+- 生成结构化决策建议报告
+- 支持浏览器打印导出 PDF
 
 ## 项目结构
+
 ```text
 inclusive-finance-platform/
-├── backend/
-│   ├── main.py
-│   ├── data_provider.py
-│   ├── schemas.py
-│   └── requirements.txt
-├── css/
-├── js/
-│   └── lib/
 ├── assets/
+│   └── data/
+│       ├── guangdong_official_raw_data.json
+│       └── guangdong_official_sources.md
+├── backend/
+│   ├── data_provider.py
+│   ├── main.py
+│   ├── requirements.txt
+│   └── schemas.py
+├── css/
+│   ├── all.min.css
+│   ├── fonts.css
+│   └── styles.css
+├── docs/
+│   ├── platform_detailed_process.md
+│   ├── 普惠金融风险动态评估平台详细运行过程说明.docx
+│   ├── 平台指标口径与生成原理详细说明_专业公式版.md
+│   ├── 平台指标口径与生成原理详细说明_专业公式版.tex
+│   ├── 平台指标口径与生成原理详细说明_专业公式版.docx
+│   └── 平台指标口径与生成原理详细说明_专业公式版.pdf
+├── js/
+│   ├── lib/
+│   │   ├── china.json
+│   │   └── echarts.min.js
+│   ├── main.js
+│   └── mock_data.js
 ├── index.html
+├── .gitignore
 └── README.md
 ```
 
+## 文档入口
+
+如果需要查看平台说明与指标口径，可直接阅读：
+
+- [docs/普惠金融风险动态评估平台详细运行过程说明.docx](docs/普惠金融风险动态评估平台详细运行过程说明.docx)
+- [docs/平台指标口径与生成原理详细说明_专业公式版.pdf](docs/平台指标口径与生成原理详细说明_专业公式版.pdf)
+- [docs/平台指标口径与生成原理详细说明_专业公式版.md](docs/平台指标口径与生成原理详细说明_专业公式版.md)
+
 ## 本地运行
 
-### 1. 创建虚拟环境
+### 1. 创建虚拟环境并安装依赖
+
 ```bash
-cd /Users/evanhan/项目/三创赛/inclusive-finance-platform
+cd /Users/evanhan/项目/三创赛动态评估平台/inclusive-finance-platform
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
 ```
 
 ### 2. 启动后端
+
 ```bash
 cd backend
 uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 ### 3. 浏览器访问
+
 ```text
 http://127.0.0.1:8001
 ```
 
-## 线上环境
+## 线上部署信息
 
 ### 域名
+
 - https://pluviohan.com
 - https://www.pluviohan.com
 
 ### 服务器
+
 - Provider: 腾讯云 Lighthouse
 - OS: Ubuntu Server 22.04 LTS 64bit
 - Public IP: `106.53.76.27`
 
-### 线上部署目录
+### 部署目录
+
 ```text
 /opt/inclusive-finance-platform
 ```
 
-### Python 虚拟环境
+### 虚拟环境
+
 ```text
 /opt/inclusive-finance-platform/.venv
 ```
 
 ### systemd 服务
+
 ```bash
 sudo systemctl status inclusive-finance
 sudo systemctl restart inclusive-finance
@@ -88,40 +184,47 @@ sudo journalctl -u inclusive-finance -n 100 --no-pager
 ```
 
 ### Nginx
+
 ```bash
 sudo nginx -t
 sudo systemctl restart nginx
 ```
 
 ### HTTPS
-- Certbot / Let's Encrypt
-- 证书域名：`pluviohan.com`、`www.pluviohan.com`
 
-## 重新部署线上版本
+- Certbot / Let's Encrypt
+- 证书覆盖：`pluviohan.com`、`www.pluviohan.com`
+
+## 重新部署注意事项
 
 推荐流程：
 
-1. 在本地修改代码
+1. 本地修改代码
 2. 提交到 GitHub
-3. 将最新代码包同步到服务器
+3. 打包同步到服务器
 4. 覆盖 `/opt/inclusive-finance-platform`
-5. 保留 `.venv`，重启 `inclusive-finance`
+5. 保留 `.venv`
+6. 重启 `inclusive-finance`
 
-线上部署时请注意：
+部署时请注意：
+
 - 不要删除服务器上的 `.venv`，除非明确要重建依赖环境
-- 静态资源路径使用相对路径，不要改成外链
-- 本项目强调离线展示能力，不要引入 CDN
+- 不要重新引入外部 CDN
+- 保持静态资源相对路径
+- 若使用 macOS 打包上传，注意不要把本地虚拟环境覆盖到服务器
 
-## 当前版本说明
+## Git 版本建议
 
-当前 GitHub 仓库中的这一版属于“可路演、可部署、可演示”的稳定基线版本，具备：
-- 域名访问
-- HTTPS
-- 腾讯云部署
-- 手机端初步适配
+当前仓库建议按以下原则维护：
 
-后续建议演进方向：
-- 补充真实数据接入层
-- 继续优化移动端布局
-- 完善 README 与部署脚本
-- 增加线上自动化发布流程
+- 保留源码、真实数据样本、最终文档产物
+- 保留可继续维护的文档源文件（`md`、必要时 `tex`）
+- 不提交 LaTeX 中间文件、日志、系统缓存和本地运行垃圾文件
+
+## 后续可扩展方向
+
+- 扩大真实数据覆盖范围：更多省份、更多城市、更多行业
+- 将城市级真实样本进一步映射到更多模块
+- 用更完整的企业微观数据替换部分规则型代理变量
+- 持续优化移动端和浅色版视觉表现
+- 在保留离线能力的前提下补充自动化发布流程
